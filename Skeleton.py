@@ -85,14 +85,15 @@ def get_next_available_port(initial_port):
 
 class FileSynchronizer(threading.Thread):
     def __init__(self, trackerhost,trackerport,port, host='0.0.0.0'):
+
         threading.Thread.__init__(self)
         #Port for serving file requests
-        self.port = port #YOUR CODE 
-        self.host = host #YOUR CODE #trackerhost
+        self.port = #YOUR CODE
+        self.host = #YOUR CODE
 
         #Tracker IP/hostname and port
-        self.trackerhost = trackerhost #YOUR CODE
-        self.trackerport = trackerport #YOUR CODE
+        self.trackerhost = #YOUR CODE
+        self.trackerport = #YOUR CODE
 
         self.BUFFER_SIZE = 8192
 
@@ -131,11 +132,7 @@ class FileSynchronizer(threading.Thread):
         '''
         #YOUR CODE
         #Step 1. read the file name contained in the request through conn
-        directory = os.getcwd()
-        files = json.loads(get_file_info())
-        print(files)
         #Step 2. read content of that file(assumming binary file <4MB), you can open with 'rb'
-        # fileName = files['']
         #Step 3. send the content back to the requester through conn
         #Step 4. close conn when you are done.
 
