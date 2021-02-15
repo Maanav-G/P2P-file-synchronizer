@@ -5,15 +5,14 @@ import json
 import optparse
 
 
-#Validate the IP address of the correct format
 def validate_ip(s):
     """
-    Arguments:
+    Validate the IP address of the correct format
+    Arguments: 
     s -- dot decimal IP address in string
     Returns:
     True if valid; False otherwise
     """
-
     a = s.split('.')
     if len(a) != 4:
         return False
@@ -25,46 +24,44 @@ def validate_ip(s):
             return False
     return True
 
-#Validate the port number is in range [0, 2^16-1]
 def validate_port(x):
-    """
+    """Validate the port number is in range [0,2^16 -1 ]
     Arguments:
     x -- port number
     Returns:
     True if valid; False, otherwise
     """
-
     if not x.isdigit():
         return False
     i = int(x)
-    if i < 0 or i > 65536:
+    if i < 0 or i > 65535:
             return False
     return True
 
-
-#Get file info in the local directory (subdirectories are ignored)
-#NOTE: Exclude files with .so, .py, .dll suffixes
 def get_file_info():
+    """ Get file info in the local directory (subdirectories are ignored) 
+    Return: a JSON array of {'name':file,'mtime':mtime}
+    i.e, [{'name':file,'mtime':mtime},{'name':file,'mtime':mtime},...]
+    Hint: a. you can ignore subfolders, *.so, *.py, *.dll
+          b. use os.path.getmtime to get mtime, and round down to integer
     """
-    Return: a JSON array of {"name":file,"mtime":mtime}
-    """
-    # YOUR CODE
-    files = []
-    fileInfo = os.listdir('.')
-    for f in fileInfo:
-        if not(f.endswith(".so") or f.endswith(".py") or f.endswith(".dll")):
-            fileName = f
-            mtime = os.path.getmtime(fileName)
-            dictFile = {"name":fileName, "mtime":mtime}
-            files += [dictFile]
+    file_arr = []
+    files = os.listdir('.')
+    for item in files:
+        if not(
+            item.endswith(".so") or 
+            item.endswith(".py") or 
+            item.endswith(".dll")
+            ):
+            file_arr += [{
+                "name": item, 
+                "mtime": os.path.getmtime(item)
+                }]
     print("Files collected from local directory")
-    return files
+    return file_arr
         
-    
-
-#Check if a port is available
 def check_port_avaliable(check_port):
-    """
+    """Check if a port is available
     Arguments:
     check_port -- port number
     Returns:
@@ -74,20 +71,20 @@ def check_port_avaliable(check_port):
         return False
     return True
 
-#Get the next available port by searching from initial_port to 2^16 - 1
-#Hint: use check_port_avaliable() function
 def get_next_available_port(initial_port):
-    """
+    """Get the next available port by searching from initial_port to 2^16 - 1
+       Hint: You can call the check_port_avaliable() function
+             Return the port if found an available port
+             Otherwise consider next port number
     Arguments:
     initial_port -- the first port to check
+
     Return:
     port found to be available; False if no port is available.
     """
-    # YOUR CODE
-    for currPort in range(initial_port,65536):
-        if (check_port_avaliable(currPort)):
-            print("Port available.")
-            return currPort
+    for port in range(initial_port,65536):
+        if (check_port_avaliable(port)):
+            return port
     return False
 
 class FileSynchronizer(threading.Thread):
@@ -95,26 +92,28 @@ class FileSynchronizer(threading.Thread):
 
         threading.Thread.__init__(self)
         #Port for serving file requests
-        self.port = port #YOUR CODE
-        self.host = host #YOUR CODE
+        self.port = port 
+        self.host = host 
 
         #Tracker IP/hostname and port
-        self.trackerhost = trackerhost #YOUR CODE
-        self.trackerport = trackerport #YOUR CODE
+        self.trackerhost = trackerhost 
+        self.trackerport = trackerport 
 
         self.BUFFER_SIZE = 8192
 
         #Create a TCP socket to communicate with tracker
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #YOUR CODE
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self.client.settimeout(180)
 
-        #Store the message to be sent to tracker. Initialize to Init message
-        #that contains port number and local file info.
-        self.msg = {'port':self.port, 'files': get_file_info()} #YOUR CODE
-        print ("Message stored to be sent to tracker.")
+        #Store the message to be sent to the tracker. 
+        #Initialize to the Init message that contains port number and file info.
+        #Refer to Table 1 in Instructions.pdf for the format of the Init message
+        #You can use json.dumps to conver a python dictionary to a json string
+        self.msg = {'port':self.port, 'files': get_file_info()} 
+        print ("Stored the message to be sent to the tracker.")
+
         #Create a TCP socket to serve file requests
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #YOUR CODE
-        print("TCP socket to serve file requests created.")
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         try:
             self.server.bind((self.host, self.port))
         except socket.error:
@@ -126,7 +125,7 @@ class FileSynchronizer(threading.Thread):
     def exit(self):
         self.server.close()
 
-    #Handle file request from a peer
+    #Handle file request from a peer(i.e., send the file content to peers)
     def process_message(self, conn,addr):
         """
         Arguments:
@@ -134,28 +133,37 @@ class FileSynchronizer(threading.Thread):
         conn -- socket object for an accepted connection from a peer
         addr -- address bound to the socket of the accepted connection
         """
-        #YOUR code
-        #Step 1. read the file name contained in the request
+        #Step 1. read the file name contained in the request through conn
         #receive data
         data = ''
         while True:
             part = conn.recv(self.BUFFER_SIZE).decode('utf-8')
             data = data + part
-            print("Reading file name in the request.")
+            print("Step 1. Read the file name contained in the request through conn")
             if len(part) < self.BUFFER_SIZE:
                 break
     
-        #Step 2. read the file from local directory (assuming binary file < 4MB)
+        #Step 2. read content of that file(assumming binary file <4MB), you can open with 'rb'
         print("-----------------------------------------------")
-        print("PRINTING DATA")
-        print(data)
-        print("-----------------------------------------------")
-        fileRead = open(data,'r')
+        data = data.replace('"', '')
+        fileRead = open(data,'rb')
         fileData = fileRead.read()
         fileRead.close()
-        print("read from local directory.")
-        #Step 3. send the file to the requester
-        conn.sendall(fileData.encode('utf-8'))
+        print("Step 2. Read content of that file", fileData) 
+        
+        #Step 3. send the content back to the requester through conn
+        # conn.sendall(fileData.encode('utf-8'))
+        # conn.send(
+        #     bytes(
+        #         json.dumps(fileData), 
+        #         'utf-8'
+        #     )
+        # )
+        print("Step 3. Send the content back to the requester through conn")
+        conn.send(fileData)
+
+        #Step 4. close conn when you are done.
+        print("Step 4. Close conn when you are done")
         conn.close()
 
     def run(self):
@@ -168,82 +176,120 @@ class FileSynchronizer(threading.Thread):
             threading.Thread(target=self.process_message, args=(conn,addr)).start()
 
     #Send Init or KeepAlive message to tracker, handle directory response message
-    #and call self.syncfile() to request files from peers
+    #and  request files from peers
     def sync(self):
         print ('connect to:'+ self.trackerhost,self.trackerport)
-        #Step 1. send Init msg to tracker
-        #YOUR CODE
-        self.client.sendall(bytes(json.dumps(self.msg), 'utf-8'))
-        print("Send Init msg to tracker.")
-        #Step 2. receive a directory response message from tracker
-        #YOUR CODE
+
+        #Step 1. send Init msg to tracker (Note init msg only sent once)
+        #Note: self.msg is initialized with the Init message (refer to __init__)
+        #      then later self.msg contains the Keep-alive message
+        self.client.send(
+            bytes(
+                json.dumps(self.msg), 
+                'utf-8'
+            )
+        )
+        print("Step 1. Sent Init msg to tracker")
+
+        #Step 2. now receive a directory response message from tracker
         directory_response_message = ''
         while True:
             part = self.client.recv(self.BUFFER_SIZE).decode('utf-8')
             directory_response_message = directory_response_message + part
             if len(part) < self.BUFFER_SIZE:
                 break
-        print("Receive a directory response message from tracker.")
+        print("Step 2. Received a directory response message from tracker")
+        print('received from tracker:',directory_response_message)
+
+        #Step 3. parse the directory response message. If it contains new or
+        #more up-to-date files, request the files from the respective peers.
+        #NOTE: compare the modified time of the files in the message and
+        #that of local files of the same name.
+        #Hint: a. use json.loads to parse the message from the tracker
+        #      b. read all local files, use os.path.getmtime to get the mtime 
+        #         (also note round down to int)
+        #      c. for new or more up-to-date file, you need to create a socket, 
+        #         connect to the peer that contains that file, send the file name, and 
+        #         receive the file content from that peer
+        #      d. finally, write the file content to disk with the file name, use os.utime
+        #         to set the mtime
         try:
             data_dic = json.loads(directory_response_message)
         except ValueError as error:
             print("invalid json: %s" % error)
-                
-        
-        #Step 3. parse the directory response message. if it contains new or
-        #more up-to-date files, request the files from the respective peers.
-        #NOTE: compare the modified time of the files in the message and
-        #that of local files of the same name.
-        #YOUR CODE
         for f in data_dic:
-            print("Parse directory response message.")
+            print("Step 3. Parse the directory response message.")
             ip = data_dic[f]['ip']
-            print('PRINTING IP RN')
-            print(ip)
             port = data_dic[f]['port']
             mtime = data_dic[f]['mtime']
             if os.path.isfile(f):
                 if mtime > os.path.getmtime(f):
                     newSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     newSocket.connect((ip,port))
-                    newSocket.sendall(bytes(json.dumps(f), 'utf-8'))
+                    newSocket.send(
+                        bytes(
+                            json.dumps(f), 
+                            'utf-8'
+                        )
+                    )
                     message = ''
                     while True:
                         part = newSocket.recv(self.BUFFER_SIZE)
                         message = message + part.decode('utf-8')
-                        print("In sync message:", message)
+                        print("Sync Message:", message)
                         if len(part) < self.BUFFER_SIZE:
                             break
-                    newFile = open(f, 'w')
-                    newFile.write(message)
+                    newFile = open(f, 'wb')
+                    # newFile.write(message)
+                    newFile.write(
+                        bytes(
+                            json.dumps(message), 
+                            'utf-8'
+                        )
+                    )
                     newFile.close()
                     newSocket.close()
             else:
                 newSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 newSocket.connect((ip,port))
-                newSocket.sendall(f.encode('utf-8'))
+                newSocket.send(
+                        bytes(
+                            json.dumps(f), 
+                            'utf-8'
+                        )
+                    )
                 message = ''
                 while True:
                     part = newSocket.recv(self.BUFFER_SIZE)
                     message = message + part.decode('utf-8')
-                    print("In sync message:", message)
+                    print("Sync Message:", message)
                     if len(part) < self.BUFFER_SIZE:
                         break
-                newFile = open(f, 'w')
-                newFile.write(message)
+                newFile = open(f, 'wb')
+                # newFile.write(message)
+                newFile.write(
+                    bytes(
+                        json.dumps(message), 
+                        'utf-8'
+                    )
+                )
                 newFile.close()
                 newSocket.close()
                 
 
-        #Step 4. construct the KeepAlive message
-        self.msg = {'port': 180} #YOUR CODE
+        #Step 4. construct and send the KeepAlive message
+        #Note KeepAlive msg is sent multiple times, the format can be found in Table 1
+        #use json.dumps to convert python dict to json string.
+        self.msg = {
+            'port': self.port
+        } 
 
         #Step 5. start a timer
         t = threading.Timer(5, self.sync)
         t.start()
 
 if __name__ == '__main__':
-    #parse commmand line arguments
+    #parse command line arguments
     parser = optparse.OptionParser(usage="%prog ServerIP ServerPort")
     options, args = parser.parse_args()
     if len(args) < 1:
