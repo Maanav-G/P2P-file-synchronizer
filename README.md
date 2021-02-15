@@ -1,1 +1,1 @@
-# P2P-file-synchronizer
+# P2P File Synchronizer
