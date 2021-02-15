@@ -146,6 +146,10 @@ class FileSynchronizer(threading.Thread):
                 break
     
         #Step 2. read the file from local directory (assuming binary file < 4MB)
+        print("-----------------------------------------------")
+        print("PRINTING DATA")
+        print(data)
+        print("-----------------------------------------------")
         fileRead = open(data,'r')
         fileData = fileRead.read()
         fileRead.close()
@@ -179,7 +183,7 @@ class FileSynchronizer(threading.Thread):
             directory_response_message = directory_response_message + part
             if len(part) < self.BUFFER_SIZE:
                 break
-        print("Recieve a directory response message from tracker.")
+        print("Receive a directory response message from tracker.")
         try:
             data_dic = json.loads(directory_response_message)
         except ValueError as error:
@@ -206,7 +210,7 @@ class FileSynchronizer(threading.Thread):
                     message = ''
                     while True:
                         part = newSocket.recv(self.BUFFER_SIZE)
-                        message = message + part
+                        message = message + part.decode('utf-8')
                         print("In sync message:", message)
                         if len(part) < self.BUFFER_SIZE:
                             break
